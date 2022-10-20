@@ -79,7 +79,7 @@ const useApiRevalidateEffect = createCommonEffect(1e3)
  * Similar to useSWR but with zustand as a store 
  * 
  * This is to demostrate how to work with zustand stores and custom hooks in complex use-cases
- * in a real apps we can use the swr itself if we wish
+ * in real apps we can use the swr itself if we wish
  */
 export function useAPI<T, K extends any[]>(keys: K, fn: RequestFn<T, K>, revalidateInterval: number = 0): RequestState<T> {
     const key = useMemo(() => JSON.stringify(keys), keys)

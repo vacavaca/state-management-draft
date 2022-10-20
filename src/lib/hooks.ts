@@ -26,7 +26,7 @@ export function useInterval(fn: (...args: any[]) => unknown, timeout: number) {
 type KeyedEffectFn<K extends any[]> = (...keys: K) => ((() => unknown) |  unknown)
 
 /**
- * Calls the specified effect buy only once app-wide for each key
+ * Calls the specified effect but only once app-wide for each key
  *
  * similar to how useSWR's keys work
  * 
