@@ -1,6 +1,7 @@
+import { useStore } from "effector-react"
 import { useState } from "react"
 import { useEvent, useKeyMemo } from "../lib/hooks"
-import { useAuth } from "./auth"
+import { $authStore, login, logout } from "./auth"
 import Quote from "./Quote"
 
 interface Props {
@@ -8,10 +9,10 @@ interface Props {
 }
 
 export default function Widget({ }: Props) {
-    const auth = useAuth()
+    const auth = useStore($authStore)
     const [symbol, setSymbol] = useState("BTCUSDT")
 
-    const handleAuthClick = useEvent(() => !auth.user ? auth.login({}) : auth.logout())
+    const handleAuthClick = useEvent(() => !auth.user ? login({}) : logout())
     const handleSymbolClick = useKeyMemo(symbol => () => setSymbol(symbol), [])
 
     return (

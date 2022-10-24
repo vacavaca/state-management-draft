@@ -1,23 +1,22 @@
 import produce from "immer"
-import create from "zustand"
+import { createEvent, createStore } from "effector"
 
-interface AuthState {
-    user: {} | null
-    login(user: {}): void
-    logout(): void
+type User = {} | null
+
+interface AuthStore {
+    user: User
 }
 
-// simple "auth" store, can be updated externaly
-export const useAuthStore = create<AuthState>(set => ({
-    user: null,
-    login: (user: {}) => set(produce(recipe => {
-        recipe.user = user
-    })),
-    logout: () => set(produce(recipe => {
-        recipe.user = null
+// Events are different things, that could possibly happen with store
+export const login = createEvent<User>()
+export const logout = createEvent()
+
+// Store has an initial value and event handlers
+// immer is fully optional here
+export const $authStore = createStore<AuthStore>({ user: null })
+    .on(login, (state, newUser) => produce(state, recipe => {
+        recipe.user = newUser;
     }))
-}))
-
-export function useAuth(): AuthState {
-    return useAuthStore()
-}
+    .on(logout, (state) => produce(state, recipe => {
+        recipe.user = null;
+    }))
