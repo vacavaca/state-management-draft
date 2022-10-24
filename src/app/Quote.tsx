@@ -1,9 +1,10 @@
-import { RequestState, useAPI } from "../lib/api"
-import { useAuth } from "./auth"
+import { useEvent, useStore } from "effector-react"
+import { RequestState, useAPI, refresh } from "../lib/api"
+import { $authStore } from "./auth"
 import UpdatedAt from "./UpdatedAt"
 
 function useLastPrice(symbol: string): RequestState<string> {
-    const auth = useAuth()
+    const auth = useStore($authStore)
 
     return useAPI(
         ['/api/v3/ticker/24hr', symbol, auth.user],
@@ -23,6 +24,8 @@ interface Props {
 
 export default function Quote({ symbol }: Props) {
     const state = useLastPrice(symbol)
+    const refreshFn = useEvent(refresh)
+
     return (
         <div>
             <br/>
@@ -37,7 +40,7 @@ export default function Quote({ symbol }: Props) {
             {state.error && <span>Error!</span>}
 
             <br/>
-            <button onClick={state.refresh}>Refresh</button>
+            <button onClick={refreshFn}>Refresh</button>
         </div>
     )
 }

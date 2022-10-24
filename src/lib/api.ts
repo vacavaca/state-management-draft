@@ -1,6 +1,7 @@
 import produce from "immer"
 import { useEffect, useMemo } from "react"
-import create from "zustand"
+import { createEvent, createStore } from "effector"
+import { useStore as effectorUseStore } from "effector-react"
 import { createPromiseWithResolvers, Resolvers } from "./async"
 import { createCommonEffect } from "./hooks"
 import { createKeyStore } from "./state"
@@ -13,56 +14,51 @@ export interface RequestState<T> {
     error: any
     updatedAt: number
     data: any
-    refresh(): void
 }
 
 interface InternalRequestState<T> extends RequestState<T> {
     resolvers: Resolvers<T>
     isUpdating: boolean | null
-    setUpdating(): void
-    resolve(v: T): void
-    reject(v: T): void
 }
 
-const useRequestStore = createKeyStore(() => create<InternalRequestState<any>>(set => {
-    return {
-        ...createPromiseWithResolvers<any>(),
-        isUpdating: false,
-        isLoading: true,
-        updatedAt: 0,
-        error: null,
-        data: null,
-        setUpdating: () => set(produce(recipe => {
-            recipe.isUpdating = true
-            recipe.isLoading = true
-        })),
-        resolve: (v: any) => set(produce(recipe => {
-            recipe.data = v
-            recipe.error = null
-            recipe.updatedAt = Date.now()
-            recipe.isLoading = false
-            recipe.isUpdating = false
-            recipe.resolvers[0](v)
-        })),
-        reject: (e: any) => set(produce(recipe => {
-            recipe.data = null
-            recipe.error = e
-            recipe.isLoading = false
-            recipe.isUpdating = false
-            recipe.resolvers[1](e)
-        })),
-        refresh: () => set(produce(recipe => {
-            if (recipe.isUpdating) return
+const setUpdating = createEvent()
+const resolve = createEvent<any>()
+const reject = createEvent<any>()
+export const refresh = createEvent<void>()
 
-            const { promise, resolvers } = createPromiseWithResolvers<any>()
+const useRequestStore = createKeyStore(() => createStore<InternalRequestState<any>>({
+    ...createPromiseWithResolvers<any>(),
+    isUpdating: false,
+    isLoading: true,
+    updatedAt: 0,
+    error: null,
+    data: null,
+}).on(setUpdating, (initialState, _) => produce(initialState, recipe => {
+    recipe.isUpdating = true
+    recipe.isLoading = true
+})).on(resolve, (initialState, v) => produce(initialState, recipe => {
+    recipe.data = v
+    recipe.error = null
+    recipe.updatedAt = Date.now()
+    recipe.isLoading = false
+    recipe.isUpdating = false
+    recipe.resolvers[0](v)
+})).on(reject, (initialState, e) => produce(initialState, recipe => {
+    recipe.data = null
+    recipe.error = e
+    recipe.isLoading = false
+    recipe.isUpdating = false
+    recipe.resolvers[1](e)
+})).on(refresh, (initialState) => produce(initialState, recipe => {
+    if (recipe.isUpdating) return
 
-            recipe.isLoading = true
-            recipe.isUpdating = false
-            recipe.promise = promise
-            recipe.resolvers = resolvers
-        }))
-    }
-}))
+    const { promise, resolvers } = createPromiseWithResolvers<any>()
+
+    recipe.isLoading = true
+    recipe.isUpdating = false
+    recipe.promise = promise
+    recipe.resolvers = resolvers
+})))
 
 // interface hook
 
@@ -94,7 +90,7 @@ export function useAPI<T, K extends any[]>(keys: K, fn: RequestFn<T, K>, revalid
         const isFresh = isFreshState(state, revalidateInterval)
         if (!state.isLoading && isFresh) return
 
-        state.setUpdating()
+        setUpdating()
 
         async function load() {
             try {
@@ -102,9 +98,9 @@ export function useAPI<T, K extends any[]>(keys: K, fn: RequestFn<T, K>, revalid
                 await new Promise(resolve => setTimeout(resolve, 700))
 
                 const data = await fn(...keys)
-                useStore.getState().resolve(data)
+                resolve(data)
             } catch (error) {
-                useStore.getState().reject(error)
+                reject(error)
             }
         }
 
@@ -115,11 +111,11 @@ export function useAPI<T, K extends any[]>(keys: K, fn: RequestFn<T, K>, revalid
         const timer = setInterval(() => {
             const state = useStore.getState()
             if (!isFreshState(state, revalidateInterval)) {
-                state.refresh()
+                refresh()
             }
         }, 500)
         return () => clearInterval(timer)
     })
 
-    return useStore()
+    return effectorUseStore(useStore)
 }
